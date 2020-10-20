@@ -6,8 +6,8 @@
 #define global static 
 #define internal static 
 
-#define ROW 16
-#define COL 16
+#define SNAKE_SIZE 20
+#define ROW_COL_SIZE (480 / SNAKE_SIZE)
 
 enum Direction 
 {
@@ -17,7 +17,7 @@ enum Direction
     Right
 }; 
 
-struct Body
+struct Entity
 {
     int x; 
     int y; 
@@ -26,23 +26,81 @@ struct Body
 struct Game_State
 {
     bool running = true; 
-    bool game_over = false; 
     int len = 1;
     Direction snake_direction = Left; 
-    Body snake[ROW][COL];
+    Entity snake[512];
+    Entity food;
 };
 
 global Game_State Game; 
 
 internal void ResetGame(Game_State *game) 
 {
-    game->game_over = false;
+    game->len = 1; 
+    game->snake_direction = Left;
+    game->snake[0] = { 1, 1 };
+    game->food = { ROW_COL_SIZE - 2, 1 };
 }
 
-internal void DrawSnake(SDL_Renderer *renderer, Game_State *game)
+internal void DrawBoard(SDL_Renderer *renderer, Game_State *game)
 {
-    Primitive_Color color = { 0, 255, 0, 255 };
-};
+    Primitive_Color green = { 0, 255, 0, 255 };
+    Primitive_Color red   = { 255, 0, 0, 255 };
+
+    // Draw Food 
+    Primitive_DrawFilledRect(renderer, game->food.x * SNAKE_SIZE, game->food.y *SNAKE_SIZE,
+                             SNAKE_SIZE, SNAKE_SIZE, red);
+
+    // Draw Snake
+    for (int i = 0; i < game->len; ++i)
+    {
+        Primitive_DrawFilledRect(renderer, 
+                                 game->snake[i].x * SNAKE_SIZE, game->snake[i].y * SNAKE_SIZE, 
+                                SNAKE_SIZE, SNAKE_SIZE, green);
+    }
+}
+
+internal void CheckCollisions(Game_State *game)
+{
+}
+
+internal void Move(Game_State *game)
+{
+    switch (game->snake_direction)
+    {
+        case Up: 
+        {
+            game->snake[game->len - 1].y -= 1;
+        } break;
+
+        case Down: 
+        {
+            game->snake[game->len - 1].y += 1;
+        } break;
+
+        case Left: 
+        {
+            game->snake[game->len - 1].x += 1;
+        } break;
+
+        case Right: 
+        {
+            game->snake[game->len - 1].x -= 1;
+        } break;
+    }
+
+    // Moves the snake so the part of the snake was in the postion of the one after
+    for (int i = 1; i < game->len; ++i)
+    {
+        game->snake[i - 1] = game->snake[i];
+    }
+
+    SDL_Delay(250);
+}
+
+internal void GenerateFood(Game_State *game)
+{
+}
 
 internal void HandleEvent(SDL_Event *event)
 {
@@ -51,7 +109,7 @@ internal void HandleEvent(SDL_Event *event)
         case SDL_QUIT: 
         {
             Game.running = false; 
-        };
+        } break;
     }
 }
 
@@ -87,7 +145,11 @@ int main(int argc, char **argv)
                     HandleEvent(&event);
                 }
 
-                DrawSnake(renderer, &Game);
+                SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
+                SDL_RenderClear(renderer);
+
+                DrawBoard(renderer, &Game);
+                Move(&Game);
 
                 SDL_RenderPresent(renderer);
             }
