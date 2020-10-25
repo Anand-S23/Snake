@@ -25,13 +25,22 @@ struct Entity
     int y; 
 };
 
+enum State 
+{
+    Start, 
+    Play, 
+    Game_Over
+};
+
 struct Game_State
 {
     bool running = true; 
     int len = 1;
+    State state; 
     Direction snake_direction; 
     Entity snake[576];
     Entity food;
+    bool key_down = false; 
 };
 
 global Game_State Game; 
@@ -46,9 +55,10 @@ internal Entity GenerateFood()
 
 internal void ResetGame(Game_State *game) 
 {
-    game->len = 1; 
-    game->snake_direction = Down;
-    game->snake[0] = { 0, 1 };
+    game->len = 2; 
+    game->state = Play;
+    game->snake_direction = Right;
+    game->snake[1] = { 1, 1 };
     game->food = GenerateFood();
 }
 
@@ -101,9 +111,31 @@ internal void CheckCollisions(Game_State *game)
         ++game->len; 
         int current_x = game->snake[game->len - 2].x;
         int current_y = game->snake[game->len - 2].y;
-        --game->snake[game->len - 2].x;
-        game->snake[game->len - 1] = { current_x, current_y };
 
+        switch (game->snake_direction)
+        {
+            case Up:
+            {
+                ++game->snake[game->len - 2].y;
+            } break; 
+
+            case Down: 
+            {
+                --game->snake[game->len - 2].y;
+            } break; 
+
+            case Left: 
+            {
+                ++game->snake[game->len - 2].x;
+            } break; 
+
+            case Right: 
+            {
+                --game->snake[game->len - 2].x;
+            } break; 
+        }
+
+        game->snake[game->len - 1] = { current_x, current_y };
         game->food = GenerateFood();
     }
 }
@@ -124,12 +156,12 @@ internal void Move(Game_State *game)
 
         case Left: 
         {
-            game->snake[game->len - 1].x += 1;
+            game->snake[game->len - 1].x -= 1;
         } break;
 
         case Right: 
         {
-            game->snake[game->len - 1].x -= 1;
+            game->snake[game->len - 1].x += 1;
         } break;
 
         default:
@@ -159,47 +191,54 @@ internal void HandleEvent(SDL_Event *event)
 
         case SDL_KEYDOWN: 
         {
-            printf("Keypress \n %d\n", Game.snake_direction);
-            switch (event->key.keysym.sym)
+            if (!Game.key_down)
             {
-                case SDL_SCANCODE_UP: 
-                case SDL_SCANCODE_W: 
+                switch (event->key.keysym.scancode)
                 {
-                    if (Game.snake_direction != Down)
+                    case SDL_SCANCODE_UP: 
+                    case SDL_SCANCODE_W: 
                     {
-                        Game.snake_direction = Up;
-                    }
-                } break;
+                        if (Game.snake_direction != Down)
+                        {
+                            Game.snake_direction = Up;
+                        }
+                    } break;
 
-                case SDL_SCANCODE_DOWN: 
-                case SDL_SCANCODE_S:
-                {
-                    printf("key");
-                    if (Game.snake_direction != Up)
+                    case SDL_SCANCODE_DOWN: 
+                    case SDL_SCANCODE_S:
                     {
-                        Game.snake_direction = Down;
-                    }
-                } break; 
+                        if (Game.snake_direction != Up)
+                        {
+                            Game.snake_direction = Down;
+                        }
+                    } break; 
 
-                case SDL_SCANCODE_LEFT: 
-                case SDL_SCANCODE_A:
-                {
-                    if (Game.snake_direction != Right)
+                    case SDL_SCANCODE_LEFT: 
+                    case SDL_SCANCODE_A:
                     {
-                        Game.snake_direction = Left; 
-                    }
-                } break; 
+                        if (Game.snake_direction != Right)
+                        {
+                            Game.snake_direction = Left; 
+                        }
+                    } break; 
 
-                case SDL_SCANCODE_RIGHT:
-                case SDL_SCANCODE_D:
-                {
-                    if (Game.snake_direction != Left)
+                    case SDL_SCANCODE_RIGHT:
+                    case SDL_SCANCODE_D:
                     {
-                        Game.snake_direction = Right;
-                    }
-                } break;
-            }
-        } break;
+                        if (Game.snake_direction != Left)
+                        {
+                            Game.snake_direction = Right;
+                        }
+                    } break;
+                }
+            } break;
+            Game.key_down = true; 
+        } break; 
+
+        case SDL_KEYUP: 
+        {
+            Game.key_down = false;
+        } break; 
     }
 }
 
@@ -239,8 +278,23 @@ int main(int argc, char **argv)
                 SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
                 SDL_RenderClear(renderer);
 
-                Move(&Game);
-                DrawBoard(renderer, &Game);
+                switch(Game.state)
+                {
+                    case Start:
+                    {
+                        DrawBoard(renderer, &Game);
+                    } break; 
+
+                    case Play: 
+                    {
+                        Move(&Game);
+                        DrawBoard(renderer, &Game);
+                    } break;
+
+                    case Game_Over: 
+                    {
+                    } break; 
+                }
 
                 SDL_RenderPresent(renderer);
             }
